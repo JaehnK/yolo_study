@@ -4,19 +4,25 @@ import json
 
 from PIL import Image
 
-def prop_open(path:str) -> dict:
+def prop_open(path: str) -> dict:
     path = os.path.join(path, 'crop_area.properties')
-    print(path)
-    cropProp = dict()
-    with open(path, mode = 'r', ) as f:
+    print(f"Reading file: {path}")
+    crop_prop = dict()
+    with open(path, mode='r') as f:
         content = f.readlines()
-        for i, con in enumerate(content):
-            element = con.split('=')
-            if element == 2:
-                key, value = element
+    for con in content:
+        element = con.strip().split('=')
+        if len(element) == 2:
+            key, value = element
+            try:
                 crops = [int(e) for e in value.split(',')]
-                cropProp[key] = {'crop_raw' : crops, 'img_size' : None, 'crop_norm' : list()}
-    return cropProp
+                if len(crops) == 4:  # Ensure we have 4 values for x, y, width, height
+                    crop_prop[key] = {'crop_raw': crops, 'img_size': None, 'crop_norm': list()}
+                else:
+                    print(f"Warning: Skipping invalid data for {key}: {value}")
+            except ValueError:
+                print(f"Warning: Could not parse values for {key}: {value}")
+    return crop_prop
 
 def get_imgsize(paths:list, img_infos:dict):
     for img in paths:
@@ -45,18 +51,19 @@ def get_imgsize(paths:list, img_infos:dict):
     return
 
 def main():
-    path = './foodSample'
+    path = '../convnext/food_image/kfood/food'
     dirs = os.listdir(path)
     img_infos = dict()
     for dir in dirs:
         dir_path = os.path.join(path, dir)
-        img_infos.update(prop_open(dir_path))
-        
-        imgs_path = [os.path.join(dir_path, img) for img in os.listdir(dir_path) if img.endswith('jpg')]
-        get_imgsize(imgs_path, img_infos)
-        #print(imgs_path)
-        print(img_infos)
-
+        print(dir_path)
+        for d in os.listdir(dir_path):
+            dir_subdir = os.path.join(dir_path, d)
+            img_infos.update(prop_open(dir_subdir))
+        #imgs_path = [os.path.join(dir_path, img) for img in os.listdir(dir_path) if img.endswith('jpg')]
+        #get_imgsize(imgs_path, img_infos)
+    with open("./properties.json", mode = 'w') as f:
+        json.dump(img_infos, f)
 
 if __name__ == '__main__':
     main()
